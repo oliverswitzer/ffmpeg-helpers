@@ -1,17 +1,31 @@
 #!/bin/bash
 
 # Usage:
-#   ./compress-images.sh <path_to_folder_with_jpgs>
+#   ./compress-images.sh [--extension jpeg] <path_to_folder>
+
+# Default file extension
+EXTENSION="jpg"
+
+# Process command line arguments
+while [[ "$#" -gt 0 ]]; do
+	case $1 in
+	--extension)
+		EXTENSION="$2"
+		shift
+		;;
+	*)
+		DIRECTORY="$1"
+		;;
+	esac
+	shift
+done
 
 # Check if a directory argument was provided
-if [ -z "$1" ]; then
+if [ -z "${DIRECTORY}" ]; then
 	echo "Error: No directory provided."
-	echo "Usage: $0 /path/to/jpeg/files"
+	echo "Usage: $0 [--extension <extension>] /path/to/files"
 	exit 1
 fi
-
-# Directory containing the jpeg files
-DIRECTORY="$1"
 
 # Temporary directory for compressed files
 TEMP_DIR="${DIRECTORY}/compressed"
@@ -30,11 +44,12 @@ MAXSIZE=$((4 * 1024 * 1024))
 # Compression quality
 QUALITY=85
 
-for file in "${DIRECTORY}"/*.JPG; do
+# Loop through files with specified extension
+for file in "${DIRECTORY}"/*.${EXTENSION}; do
 	# macOS `stat` command uses a different syntax
 	FILESIZE=$(stat -f%z "$file")
 
-	# Skip non-existent files (e.g., if no .jpg files are present)
+	# Skip non-existent files (e.g., if no files with specified extension are present)
 	if [ -z "$FILESIZE" ]; then
 		continue
 	fi
@@ -43,30 +58,36 @@ for file in "${DIRECTORY}"/*.JPG; do
 	extension="${filename##*.}"
 	filename="${filename%.*}"
 
-	# If the file is larger than the MAXSIZE
-	while [ $FILESIZE -gt $MAXSIZE ]; do
-		echo "Compressing $file because it is larger than 4MB."
+	# Check if the file is smaller than the MAXSIZE
+	if [ $FILESIZE -le $MAXSIZE ]; then
+		# Copy the file to the temporary directory with NOT_COMPRESSED in the filename
+		cp "$file" "${TEMP_DIR}/${filename}_NOT_COMPRESSED.${extension}"
+	else
+		# If the file is larger than the MAXSIZE, compress it
+		while [ $FILESIZE -gt $MAXSIZE ]; do
+			echo "Compressing $file because it is larger than 4MB."
 
-		# Compress the image
-		ffmpeg -i "$file" -q:v $QUALITY "${TEMP_DIR}/${filename}_compressed.${extension}" -y
+			# Compress the image
+			ffmpeg -i "$file" -q:v $QUALITY "${TEMP_DIR}/${filename}_compressed.${extension}" -y
 
-		# Check the filesize of the compressed image
-		FILESIZE=$(stat -f%z "${TEMP_DIR}/${filename}_compressed.${extension}")
+			# Check the filesize of the compressed image
+			FILESIZE=$(stat -f%z "${TEMP_DIR}/${filename}_compressed.${extension}")
 
-		# If the filesize is still too large, decrease the quality and try again
-		if [ $FILESIZE -gt $MAXSIZE ]; then
-			QUALITY=$((QUALITY - 5))
-		fi
+			# If the filesize is still too large, decrease the quality and try again
+			if [ $FILESIZE -gt $MAXSIZE ]; then
+				QUALITY=$((QUALITY - 5))
+			fi
 
-		# Prevent infinite loops by setting a lower limit on quality
-		if [ $QUALITY -le 10 ]; then
-			echo "Cannot compress $file to under 4MB without significant quality loss."
-			break
-		fi
-	done
+			# Prevent infinite loops by setting a lower limit on quality
+			if [ $QUALITY -le 10 ]; then
+				echo "Cannot compress $file to under 4MB without significant quality loss."
+				break
+			fi
+		done
+	fi
 
 	# Reset the quality for the next image
 	QUALITY=85
 done
 
-echo "Compression completed. Compressed files are located in $TEMP_DIR"
+echo "Compression completed. Compressed and copied files are located in $TEMP_DIR"
