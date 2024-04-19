@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Description:
+#   This script compresses images in a specified directory that exceed a maximum file size.
+#   Images smaller than the maximum size are copied without compression and marked as not compressed.
+#   The script supports custom file extensions and outputs the processed files into a 'compressed'
+#   subdirectory within the specified directory.
+
 # Usage:
 #   ./compress-images.sh [--extension jpeg] <path_to_folder>
 
