@@ -1,4 +1,14 @@
 #!/bin/bash
+
+# Description:
+#   This script converts all .avi files in a specified directory to .mp4 format using ffmpeg.
+#   It uses pushd and popd to change to the directory where the .avi files are located,
+#   ensuring that the user's current working directory remains unchanged after the script runs.
+#   If no .avi files are found in the specified directory, the script will inform the user and exit.
+
+# Usage:
+#   ./convert-avi-to-mp4.sh /path/to/directory
+
 # Check if the user provided a directory as an argument
 if [ $# -eq 0 ]; then
     echo "Please provide a directory."
